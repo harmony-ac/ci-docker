@@ -15,8 +15,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag harmonyac/ci:$(date +%s)
+      run: docker build . --file Dockerfile --tag harmonyac/ci:$GITHUB_RUN_NUMBER
     - name: push docker image
-      run: docker login -u harmonyac -p ${{ secrets.DOCKER_HUB_PASSWORD }} && docker push harmonyac/ci:$(date +%s)
+      run: docker login -u harmonyac -p ${{ secrets.DOCKER_HUB_PASSWORD }} && docker push harmonyac/ci:$GITHUB_RUN_NUMBER
       
     
