@@ -4,5 +4,6 @@ RUN apk add \
       maven openjdk8 \
       chromium chromium-chromedriver \
       xvfb
-COPY main.js /harmony-ci/main.js
-ENTRYPOINT /harmony-ci/main.js
+COPY harmony-ci /usr/bin/harmony-ci
+COPY optparse.bash /usr/bin/optparse.bash
+CMD /usr/bin/harmony-ci

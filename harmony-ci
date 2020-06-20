@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+source $(dirname $0)/optparse.bash
+optparse.define \
+  short=t \
+  long=token \
+  desc="The runner token for accessing Harmony" \
+  variable=token
+optparse.define short=h \
+  long=host \
+  desc="The Harmony host" \
+  variable=host \
+  default=https://cloud.harmony.ac
+source $( optparse.build )
+shift $((OPTIND - 1))
+
+if [ ! "$token" ]; then
+  echo "--token not set!"
+fi
+
+echo "$@"
+
+if [ $# = 0 ]; then
+  usage
+  exit 1
+fi
