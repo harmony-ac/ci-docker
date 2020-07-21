@@ -1,26 +1,79 @@
-#!/usr/bin/env bash
+#!/usr/bin/env node
+const fs = require('fs')
+const path = require('path')
+const child_process = require('child_process')
 
-source $(dirname $0)/optparse.bash
-optparse.define \
-  short=t \
-  long=token \
-  desc="The runner token for accessing Harmony" \
-  variable=token
-optparse.define short=h \
-  long=host \
-  desc="The Harmony host" \
-  variable=host \
-  default=https://cloud.harmony.ac
-source $( optparse.build )
-shift $((OPTIND - 1))
+const HARMONY_TOKEN = process.env.HARMONY_TOKEN
+if (!HARMONY_TOKEN) error('HARMONY_TOKEN environment variable not set')
 
-if [ ! "$token" ]; then
-  echo "--token not set!"
-fi
+if (process.argv.length <= 2) {
+  console.log(process.argv)
+  console.error(
+    'Usage: docker run -e HARMONY_TOKEN=0123456789 harmonyac/ci https://cloud.harmony.ac/project/12345670'
+  )
+}
 
-echo "$@"
+let failed = false
+for (const proj of process.argv.slice(2)) {
+  const m = /((https?):\/\/[^/]+)\/project\/([^/?]+)/.exec(proj)
+  if (!m) {
+    console.error('!!! Invalid url: ' + proj)
+    failed = true
+    continue
+  }
+  const [_url, host, protocol, projectId] = m
+  try {
+    const result = post(`${host}/runs?export=maven`, {
+      type: 'ProjectRun',
+      runnerToken: HARMONY_TOKEN,
+      projectId
+    })
+    if (result.message) {
+      throw new Error(result.message)
+    }
+    if (!result.files) throw new Error('Did not receive files')
+    for (const { name, data } of result.files) {
+      fs.mkdirSync(path.dirname(name), { recursive: true })
+      fs.writeFileSync(name, data)
+    }
+    const child = child_process.spawnSync(
+      'sh',
+      [
+        '-c',
+        `echo hi && Xvfb :1 -screen 1 1920x1080x16 & export DISPLAY=:1 && mvn test -DfrmSeChrome.option.no-sandbox=no-sandbox -DfrmSeChrome.option.disable-dev-shm-usage=disable-dev-shm-usage`
+      ],
+      { stdio: 'inherit' }
+    )
+    process.exit(child.status == null ? 1 : child.status)
+  } catch (e) {
+    console.error(`Error: ${e.message}`)
+    if (e.stdout) console.error(e.stdout.toString())
+    failed = true
+  }
+}
+if (failed) process.exit(1)
 
-if [ $# = 0 ]; then
-  usage
-  exit 1
-fi
+function post (url, body) {
+  const r = child_process.execSync(
+    `curl \\
+      -L \\
+      -H content-type:application/json \\
+      -H 'Authorization: Bearer ${HARMONY_TOKEN}' \\
+      -d '${q(JSON.stringify(body))}' \\
+      ${url}`
+  )
+  try {
+    return JSON.parse(r.toString())
+  } catch (e) {
+    throw new Error(r.toString())
+  }
+}
+
+function error (msg) {
+  console.error(msg)
+  process.exit(1)
+}
+
+function q (s) {
+  return s.replace(/'/g, "\\'")
+}

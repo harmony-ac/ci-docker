@@ -5,5 +5,4 @@ RUN apk add \
       chromium chromium-chromedriver \
       xvfb
 COPY harmony-ci /usr/bin/harmony-ci
-COPY optparse.bash /usr/bin/optparse.bash
-CMD /usr/bin/harmony-ci
+ENTRYPOINT ["node", "/usr/bin/harmony-ci"]
